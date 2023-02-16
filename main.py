@@ -468,3 +468,4 @@ if __name__ == "__main__":
         painter.check()
         # Limit the number of iterations per second to 1000.
         clock.tick(1000)
+  
