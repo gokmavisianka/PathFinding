@@ -25,7 +25,6 @@ SOFTWARE.
 import heapq
 import pygame
 import numpy as np
-from time import sleep
 from threading import Thread
 
 
