@@ -28,12 +28,39 @@ import numpy as np
 from threading import Thread
 
 
+# Define the string to be printed on the screen to inform the user.
+string = """
+
+Keys:
+    'Q': quit.
+    'S': start pathfinding.
+    'C': clear the map.
+    'E': erase the path (Walls/Obstacles won't be erased).
+    
+    To change the block type:
+        '0': 'empty'
+        '1': 'wall'
+        '2': 'start point'
+        '3': 'end point'
+    
+Use mouse buttons to place/erase blocks on the map.
+    'Left Click' : Place
+    'Right Click': Erase
+    
+    If you can't use the right mouse button, simply press the '0' key and use your left mouse button.
+    
+"""
+
+# Print the string on the screen.
+print(string)
+
+# Define the directions.
 directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
 # For the diagonal movement:
 # directions = [(0, 1), (0, -1), (1, 0), (-1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]
 
-
+# Define the colors for different block types.
 # 0: empty, 1: wall, 2: start point, 3: end_point, 4: path.
 color_map = {0: (255, 255, 255),
              1: (0, 0, 0),
@@ -74,6 +101,12 @@ class Map:
             return True
         # Return True if the condition is met. Otherwise, return False.
         return False
+
+    # This function is used to recreate the map with the same size.
+    def clear(self):
+        width = self.shape.width
+        height = self.shape.height
+        self.create((width, height))
 
 
 # a class for pathfinding process.
@@ -166,10 +199,10 @@ class Pathfinding:
     def is_valid(position: tuple[int, int]):
         # This function is used to check if the given position is valid.
         row, column = position
-        # Check if there is no obstacle in the given position.
-        if game.map.grid[row][column] != 1:
-            # Check if the position is within the map boundaries.
-            if 0 <= row < game.map.shape.width and 0 <= column < game.map.shape.height:
+        # Check if the position is within the map boundaries.
+        if 0 <= row < game.map.shape.width and 0 <= column < game.map.shape.height:
+            # Check if there is no obstacle in the given position.
+            if game.map.grid[row][column] != 1:
                 return True
         # If all conditions are satisfied, return True. Otherwise, return False.
         return False
@@ -214,18 +247,26 @@ class Painter:
 
     # This functions is used to create a block on the map.
     def create(self):
-        if not pathfinding.busy and not pathfinding.need_reset:
+        if not pathfinding.need_reset:
             row, column = self.convert_mouse_position()
             value = game.map.grid[row, column]
             # Check if we are not trying to paint the cell same colour.
             if value != self.block_type:
-                game.map.grid[row, column] = self.block_type
-                game.draw_block(row, column)
                 # Add the start point to the list of start points.
                 if self.block_type == 2:
+                    # Erase the previous start point, if exists.
+                    if game.map.start_point is not None:
+                        previous_row, previous_column = game.map.start_point
+                        game.map.grid[previous_row, previous_column] = 0
+                        game.draw_block(previous_row, previous_column)
                     game.map.start_point = (row, column)
                 # Create the end point.
                 if self.block_type == 3:
+                    # Erase the previous end point, if exists.
+                    if game.map.end_point is not None:
+                        previous_row, previous_column = game.map.end_point
+                        game.map.grid[previous_row, previous_column] = 0
+                        game.draw_block(previous_row, previous_column)
                     game.map.end_point = (row, column)
                 # Remove the start point if it is replaced by different block type.
                 if value == 2:
@@ -233,6 +274,8 @@ class Painter:
                 # Remove the end point if it is replaced by different block type.
                 elif value == 3:
                     game.map.end_point = None
+                game.map.grid[row, column] = self.block_type
+                game.draw_block(row, column)
 
     # This functions is used to erase a block on the map.
     def erase(self):
@@ -375,8 +418,11 @@ class Keyboard:
                 pygame.quit()
                 quit()
             if event.type == pygame.KEYDOWN:
+                # If you can't use the right mouse button, press '0' to change the block type to 'empty'/'air'.
+                if event.key == pygame.K_0:
+                    painter.block_type = 0
                 # Press '1' to change the block type to 'wall'.
-                if event.key == pygame.K_1:
+                elif event.key == pygame.K_1:
                     painter.block_type = 1
                 # Press '2' to change the block type to 'start point'.
                 elif event.key == pygame.K_2:
@@ -388,17 +434,14 @@ class Keyboard:
                 elif event.key == pygame.K_s:
                     if game.map.check() is True and pathfinding.need_reset is False:
                         Thread(target=pathfinding.apply, args=()).start()
-                # Press 'R' to reset (it will erase everything on the map).
-                elif event.key == pygame.K_r:
-                    # Create the map with the same size.
-                    width = game.map.shape.width
-                    height = game.map.shape.height
-                    game.map = Map(map_size=(width, height))
-                    pathfinding.reset()
-                    # Update the screen after recreating the map.
-                    game.update()
-                # Press 'C' to erase the path (it won't erase the walls).
+                # Press 'C' to clear the map (it will erase everything on the map).
                 elif event.key == pygame.K_c:
+                    game.map.clear()
+                    pathfinding.reset()
+                    # Update the screen after clearing the map.
+                    game.update()
+                # Press 'E' to erase the path (it won't erase the walls).
+                elif event.key == pygame.K_e:
                     pathfinding.erase_path()
                     pathfinding.reset()
                     game.update()
